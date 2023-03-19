@@ -59,11 +59,11 @@ export const updateById = async (
   return findById(id);
 };
 
-export const updateManyById = async (
+export const publishShift = async (
   id: string[],
   payload: QueryDeepPartialEntity<Shift>,
 ): Promise<boolean> => {
-  logger.info('Update by id');
+  logger.info('Update Many by id');
   const repository = getRepository(Shift);
   await repository.update(id, payload);
   return true;

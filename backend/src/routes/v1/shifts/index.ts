@@ -21,6 +21,20 @@ export default function (server: Server, basePath: string) {
   });
 
   server.route({
+    method: 'PATCH',
+    path: basePath + '/publish',
+    handler: shiftController.publish,
+    options: {
+      description: 'Publish shift',
+      notes: 'Publish shift',
+      tags: ['api', 'shift'],
+      validate: {
+        payload: publishShiftDto,
+      },
+    },
+  });
+
+  server.route({
     method: 'GET',
     path: basePath + '/{id}',
     handler: shiftController.findById,
@@ -73,20 +87,6 @@ export default function (server: Server, basePath: string) {
       tags: ['api', 'shift'],
       validate: {
         params: idDto,
-      },
-    },
-  });
-
-  server.route({
-    method: 'PATCH',
-    path: basePath + '/publish',
-    handler: shiftController.publish,
-    options: {
-      description: 'Publish shift',
-      notes: 'Publish shift',
-      tags: ['api', 'shift'],
-      validate: {
-        payload: publishShiftDto,
       },
     },
   });

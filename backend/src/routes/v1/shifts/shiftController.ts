@@ -127,7 +127,7 @@ export const deleteById = async (req: Request, h: ResponseToolkit) => {
 };
 
 export const publish = async (req: Request, h: ResponseToolkit) => {
-  logger.info('Update shift by id');
+  logger.info('Update many by id');
   try {
     const body = req.payload as IPublishShift;
 

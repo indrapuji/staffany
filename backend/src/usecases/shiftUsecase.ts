@@ -35,7 +35,7 @@ export const updateById = async (id: string, payload: IUpdateShift): Promise<Shi
 
 export const publishShift = async (payload: IPublishShift) => {
   const publishedDate = new Date();
-  return shiftRepository.updateManyById(payload.shiftArrId, {
+  return shiftRepository.publishShift(payload.shiftArrId, {
     status: CONSTANT.PUBLISHED,
     publishedDate: publishedDate,
   });

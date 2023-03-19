@@ -2,26 +2,38 @@ import React, {FunctionComponent, useEffect, useState} from 'react';
 import Grid from '@material-ui/core/Grid';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
-// import {makeStyles} from '@material-ui/core/styles';
-import {Button, makeStyles} from '@material-ui/core';
+import {makeStyles} from '@material-ui/core/styles';
+import {Button, Typography} from '@material-ui/core';
 import {getErrorMessage} from '../helper/error/index';
-import {deleteShiftById, getShifts} from '../helper/api/shift';
+import {deleteShiftById, getShifts, publishShiftById} from '../helper/api/shift';
 import DataTable from 'react-data-table-component';
 import IconButton from '@material-ui/core/IconButton';
 import DeleteIcon from '@material-ui/icons/Delete';
 import EditIcon from '@material-ui/icons/Edit';
-import Fab from '@material-ui/core/Fab';
-import AddIcon from '@material-ui/icons/Add';
+// import Fab from '@material-ui/core/Fab';
+// import AddIcon from '@material-ui/icons/Add';
 import {useHistory} from 'react-router-dom';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Alert from '@material-ui/lab/Alert';
 import {Link as RouterLink} from 'react-router-dom';
+import ArrowBackIosIcon from '@material-ui/icons/ArrowBackIos';
+import ArrowForwardIosIcon from '@material-ui/icons/ArrowForwardIos';
+import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
 
 import {STAFFANY_TURQOISE} from '../commons/colors';
+import {isSameWeek, format} from 'date-fns';
 
 const useStyles = makeStyles((theme) => ({
   root: {
     minWidth: 275,
+  },
+  clr: {
+    color: STAFFANY_TURQOISE,
+    fontSize: 17,
+  },
+  typo: {
+    color: STAFFANY_TURQOISE,
+    fontSize: 14,
   },
   fab: {
     position: 'absolute',
@@ -33,6 +45,7 @@ const useStyles = makeStyles((theme) => ({
   addShiftBtn: {
     color: STAFFANY_TURQOISE,
     borderColor: STAFFANY_TURQOISE,
+    marginLeft: 20,
   },
   publishBtn: {
     backgroundColor: STAFFANY_TURQOISE,
@@ -70,6 +83,10 @@ const Shift = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
+  const [dis, setDis] = useState<boolean>(false);
+  const [publish, setpublish] = useState<string | null>(null);
+  const [arrId, setArrId] = useState<any>([]);
+
   const onDeleteClick = (id: string) => {
     setSelectedId(id);
     setShowDeleteConfirm(true);
@@ -86,7 +103,18 @@ const Shift = () => {
         setIsLoading(true);
         setErrMsg('');
         const {results} = await getShifts();
+
+        if (results.length > 0) {
+          const loopResult = results.map((item: any) => {
+            return item.id;
+          });
+          setArrId(loopResult);
+        }
         setRows(results);
+        if (results[0].publishedDate) {
+          setpublish(format(new Date(results[0].publishedDate), 'dd MMM y, p'));
+          setDis(isSameWeek(new Date(), new Date(results[0].publishedDate)));
+        }
       } catch (error) {
         const message = getErrorMessage(error);
         setErrMsg(message);
@@ -96,6 +124,9 @@ const Shift = () => {
     };
 
     getData();
+
+    console.log(getMonday(new Date()));
+    console.log(getSunday(new Date()));
   }, []);
 
   const columns = [
@@ -151,17 +182,83 @@ const Shift = () => {
     }
   };
 
+  function getMonday(d: any) {
+    d = new Date(d);
+    var day = d.getDay(),
+      diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    return new Date(d.setDate(diff));
+  }
+  function getSunday(d: any) {
+    d = new Date(d);
+    var day = d.getDay(),
+      diff = d.getDate() - day; // adjust when day is sunday
+    return new Date(d.setDate(diff));
+  }
+
+  const onPublish = async () => {
+    console.log(arrId);
+    try {
+      setIsLoading(true);
+      setErrMsg('');
+      if (arrId.length < 0) {
+        throw new Error('ID is null');
+      }
+      await publishShiftById(arrId);
+    } catch (error) {
+      const message = getErrorMessage(error);
+      setErrMsg(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Grid container spacing={3}>
       <Grid item xs={12}>
         <Card className={classes.root}>
           <CardContent>
-            <Button className={classes.addShiftBtn} variant='outlined'>
-              ADD SHIFT
-            </Button>
-            <Button className={classes.publishBtn} variant='contained'>
-              PUBLISH
-            </Button>
+            <Grid container justifyContent='space-between' alignItems='center'>
+              <Grid item>
+                <IconButton color='primary'>
+                  <ArrowBackIosIcon />
+                </IconButton>
+                {` ${getMonday(new Date()).toString().substring(4, 10)} - 
+                ${getSunday(new Date()).toString().substring(4, 10)}`}
+                <IconButton color='primary'>
+                  <ArrowForwardIosIcon />
+                </IconButton>
+              </Grid>
+              <Grid
+                container={dis}
+                alignItems='center'
+                justifyContent='flex-end'
+                item
+                xs={dis && 6}
+              >
+                {dis && (
+                  <>
+                    <CheckCircleOutlineIcon className={classes.clr} />{' '}
+                    <Typography className={classes.typo}>Week published on {publish}</Typography>
+                  </>
+                )}
+                <Button
+                  className={classes.addShiftBtn}
+                  variant='outlined'
+                  onClick={() => history.push('/shift/add')}
+                  disabled={dis}
+                >
+                  ADD SHIFT
+                </Button>
+                <Button
+                  className={classes.publishBtn}
+                  variant='contained'
+                  onClick={() => onPublish()}
+                  disabled={dis}
+                >
+                  PUBLISH
+                </Button>
+              </Grid>
+            </Grid>
             {errMsg.length > 0 ? <Alert severity='error'>{errMsg}</Alert> : <></>}
             <DataTable
               // title='Shifts'
@@ -173,14 +270,14 @@ const Shift = () => {
           </CardContent>
         </Card>
       </Grid>
-      <Fab
+      {/* <Fab
         size='medium'
         aria-label='add'
         className={classes.fab}
         onClick={() => history.push('/shift/add')}
       >
         <AddIcon />
-      </Fab>
+      </Fab> */}
       <ConfirmDialog
         title='Delete Confirmation'
         description={`Do you want to delete this data ?`}
