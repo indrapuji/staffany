@@ -10,8 +10,6 @@ import DataTable from 'react-data-table-component';
 import IconButton from '@material-ui/core/IconButton';
 import DeleteIcon from '@material-ui/icons/Delete';
 import EditIcon from '@material-ui/icons/Edit';
-// import Fab from '@material-ui/core/Fab';
-// import AddIcon from '@material-ui/icons/Add';
 import {useHistory} from 'react-router-dom';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Alert from '@material-ui/lab/Alert';
@@ -21,7 +19,7 @@ import ArrowForwardIosIcon from '@material-ui/icons/ArrowForwardIos';
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
 
 import {STAFFANY_TURQOISE} from '../commons/colors';
-import {isSameWeek, format} from 'date-fns';
+import {isSameWeek, format, startOfWeek, endOfWeek, sub, add} from 'date-fns';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -85,7 +83,10 @@ const Shift = () => {
 
   const [dis, setDis] = useState<boolean>(false);
   const [publish, setpublish] = useState<string | null>(null);
+  const [publishedDate, setPublishedDate] = useState<any>();
   const [arrId, setArrId] = useState<any>([]);
+  const [newWeek, setNewWeek] = useState<any>();
+  const [endWeek, setEndWeek] = useState<any>();
 
   const onDeleteClick = (id: string) => {
     setSelectedId(id);
@@ -111,10 +112,13 @@ const Shift = () => {
           setArrId(loopResult);
         }
         setRows(results);
-        if (results[0].publishedDate) {
-          setpublish(format(new Date(results[0].publishedDate), 'dd MMM y, p'));
-          setDis(isSameWeek(new Date(), new Date(results[0].publishedDate)));
-        }
+
+        setPublishedDate(results[0].publishedDate);
+        setpublish(format(new Date(results[0].publishedDate), 'dd MMM y, p'));
+        setDis(isSameWeek(new Date(), new Date(results[0].publishedDate)));
+
+        setNewWeek(startOfWeek(new Date(), {weekStartsOn: 1}));
+        setEndWeek(endOfWeek(new Date(), {weekStartsOn: 1}));
       } catch (error) {
         const message = getErrorMessage(error);
         setErrMsg(message);
@@ -124,9 +128,7 @@ const Shift = () => {
     };
 
     getData();
-
-    console.log(getMonday(new Date()));
-    console.log(getSunday(new Date()));
+    // eslint-disable-next-line
   }, []);
 
   const columns = [
@@ -182,21 +184,7 @@ const Shift = () => {
     }
   };
 
-  function getMonday(d: any) {
-    d = new Date(d);
-    var day = d.getDay(),
-      diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-    return new Date(d.setDate(diff));
-  }
-  function getSunday(d: any) {
-    d = new Date(d);
-    var day = d.getDay(),
-      diff = d.getDate() - day; // adjust when day is sunday
-    return new Date(d.setDate(diff));
-  }
-
   const onPublish = async () => {
-    console.log(arrId);
     try {
       setIsLoading(true);
       setErrMsg('');
@@ -212,19 +200,43 @@ const Shift = () => {
     }
   };
 
+  const changeWeek = (order: string) => {
+    if (order === 'prev') {
+      const newMonDate = sub(new Date(newWeek), {weeks: 1});
+      setNewWeek(newMonDate);
+      const newSunDate = sub(new Date(endWeek), {weeks: 1});
+      setEndWeek(newSunDate);
+      setDis(isSameWeek(new Date(newSunDate), publishedDate));
+      console.log(publishedDate);
+    } else {
+      const newMonDate = add(new Date(newWeek), {weeks: 1});
+      setNewWeek(newMonDate);
+      const newSunDate = add(new Date(endWeek), {weeks: 1});
+      setEndWeek(newSunDate);
+      setDis(isSameWeek(new Date(newSunDate), publishedDate));
+    }
+  };
+
+  const changeDate = (datePublish: string) => {
+    return datePublish.toString().substring(4, 10);
+  };
+
   return (
     <Grid container spacing={3}>
       <Grid item xs={12}>
         <Card className={classes.root}>
           <CardContent>
             <Grid container justifyContent='space-between' alignItems='center'>
-              <Grid item>
-                <IconButton color='primary'>
+              <Grid item container alignItems='center' xs={6}>
+                <IconButton color='primary' onClick={() => changeWeek('prev')}>
                   <ArrowBackIosIcon />
                 </IconButton>
-                {` ${getMonday(new Date()).toString().substring(4, 10)} - 
-                ${getSunday(new Date()).toString().substring(4, 10)}`}
-                <IconButton color='primary'>
+
+                <Typography className={dis ? classes.clr : ''}>
+                  {newWeek && endWeek && `${changeDate(newWeek)} - ${changeDate(endWeek)}`}
+                </Typography>
+
+                <IconButton color='primary' onClick={() => changeWeek('next')}>
                   <ArrowForwardIosIcon />
                 </IconButton>
               </Grid>
@@ -260,24 +272,10 @@ const Shift = () => {
               </Grid>
             </Grid>
             {errMsg.length > 0 ? <Alert severity='error'>{errMsg}</Alert> : <></>}
-            <DataTable
-              // title='Shifts'
-              columns={columns}
-              data={rows}
-              pagination
-              progressPending={isLoading}
-            />
+            <DataTable columns={columns} data={rows} pagination progressPending={isLoading} />
           </CardContent>
         </Card>
       </Grid>
-      {/* <Fab
-        size='medium'
-        aria-label='add'
-        className={classes.fab}
-        onClick={() => history.push('/shift/add')}
-      >
-        <AddIcon />
-      </Fab> */}
       <ConfirmDialog
         title='Delete Confirmation'
         description={`Do you want to delete this data ?`}
