@@ -192,6 +192,15 @@ const Shift = () => {
         throw new Error('ID is null');
       }
       await publishShiftById(arrId);
+      const {results} = await getShifts();
+      setRows(results);
+
+      setPublishedDate(results[0].publishedDate);
+      setpublish(format(new Date(results[0].publishedDate), 'dd MMM y, p'));
+      setDis(isSameWeek(new Date(), new Date(results[0].publishedDate)));
+
+      setNewWeek(startOfWeek(new Date(), {weekStartsOn: 1}));
+      setEndWeek(endOfWeek(new Date(), {weekStartsOn: 1}));
     } catch (error) {
       const message = getErrorMessage(error);
       setErrMsg(message);
