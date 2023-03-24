@@ -215,14 +215,14 @@ const Shift = () => {
       setNewWeek(newMonDate);
       const newSunDate = sub(new Date(endWeek), {weeks: 1});
       setEndWeek(newSunDate);
-      setDis(isSameWeek(new Date(newSunDate), publishedDate));
+      setDis(isSameWeek(new Date(newSunDate), new Date(publishedDate)));
       console.log(publishedDate);
     } else {
       const newMonDate = add(new Date(newWeek), {weeks: 1});
       setNewWeek(newMonDate);
       const newSunDate = add(new Date(endWeek), {weeks: 1});
       setEndWeek(newSunDate);
-      setDis(isSameWeek(new Date(newSunDate), publishedDate));
+      setDis(isSameWeek(new Date(newSunDate), new Date(publishedDate)));
     }
   };
 
