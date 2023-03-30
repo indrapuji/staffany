@@ -16,3 +16,9 @@ export interface IUpdateShift {
 export interface IPublishShift {
   shiftArrId?: string[];
 }
+
+export interface IFindShift {
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+}

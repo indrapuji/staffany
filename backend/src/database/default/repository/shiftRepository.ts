@@ -11,7 +11,7 @@ import {QueryDeepPartialEntity} from 'typeorm/query-builder/QueryPartialEntity';
 
 const logger = moduleLogger('shiftRepository');
 
-export const find = async (opts?: FindManyOptions<Shift>): Promise<Shift[]> => {
+export const find = async (opts: FindManyOptions<Shift>): Promise<Shift[]> => {
   logger.info('Find');
   const repository = getRepository(Shift);
   const data = await repository.find(opts);

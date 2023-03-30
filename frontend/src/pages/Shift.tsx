@@ -33,13 +33,6 @@ const useStyles = makeStyles((theme) => ({
     color: STAFFANY_TURQOISE,
     fontSize: 14,
   },
-  fab: {
-    position: 'absolute',
-    bottom: 40,
-    right: 40,
-    backgroundColor: 'white',
-    color: theme.color.turquoise,
-  },
   addShiftBtn: {
     color: STAFFANY_TURQOISE,
     borderColor: STAFFANY_TURQOISE,
@@ -81,12 +74,10 @@ const Shift = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
-  const [dis, setDis] = useState<boolean>(false);
-  const [publish, setpublish] = useState<string | null>(null);
-  const [publishedDate, setPublishedDate] = useState<any>();
-  const [arrId, setArrId] = useState<any>([]);
   const [newWeek, setNewWeek] = useState<any>();
   const [endWeek, setEndWeek] = useState<any>();
+  const [dis, setDis] = useState<any>(false);
+  const [publish, setpublish] = useState<string | null>(null);
 
   const onDeleteClick = (id: string) => {
     setSelectedId(id);
@@ -99,37 +90,48 @@ const Shift = () => {
   };
 
   useEffect(() => {
-    const getData = async () => {
-      try {
-        setIsLoading(true);
-        setErrMsg('');
-        const {results} = await getShifts();
-
-        if (results.length > 0) {
-          const loopResult = results.map((item: any) => {
-            return item.id;
-          });
-          setArrId(loopResult);
-        }
-        setRows(results);
-
-        setPublishedDate(results[0].publishedDate);
-        setpublish(format(new Date(results[0].publishedDate), 'dd MMM y, p'));
-        setDis(isSameWeek(new Date(), new Date(results[0].publishedDate)));
-
-        setNewWeek(startOfWeek(new Date(), {weekStartsOn: 1}));
-        setEndWeek(endOfWeek(new Date(), {weekStartsOn: 1}));
-      } catch (error) {
-        const message = getErrorMessage(error);
-        setErrMsg(message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    getData();
+    setNewWeek(startOfWeek(new Date(), {weekStartsOn: 1}));
+    setEndWeek(endOfWeek(new Date(), {weekStartsOn: 1}));
+    getData(startOfWeek(new Date(), {weekStartsOn: 1}), endOfWeek(new Date(), {weekStartsOn: 1}));
     // eslint-disable-next-line
   }, []);
+
+  interface ShiftData {
+    some(arg0: (item: any) => boolean): unknown;
+    createdAt: string;
+    date: string;
+    endTime: string;
+    id: string;
+    name: string;
+    publishedDate: string;
+    startTime: string;
+    status: string;
+    updatedAt: string;
+  }
+  const foundPublished = (data: ShiftData) => {
+    const isFound = data.some((item) => item.status === 'published');
+    return isFound;
+  };
+
+  const getData = async (startDate: Date, endDate: Date) => {
+    try {
+      setIsLoading(true);
+      setErrMsg('');
+      const {results} = await getShifts(startDate, endDate);
+      setRows(results);
+      if (foundPublished(results)) {
+        setpublish(format(new Date(results[0].publishedDate), 'dd MMM y, p'));
+        setDis(foundPublished(results));
+      } else {
+        setDis(foundPublished(results));
+      }
+    } catch (error) {
+      const message = getErrorMessage(error);
+      setErrMsg(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const columns = [
     {
@@ -188,19 +190,18 @@ const Shift = () => {
     try {
       setIsLoading(true);
       setErrMsg('');
-      if (arrId.length < 0) {
+
+      if (rows.length === 0) {
         throw new Error('ID is null');
       }
-      await publishShiftById(arrId);
-      const {results} = await getShifts();
+      const arrPublish = rows.map((item: any) => {
+        return item.id;
+      });
+      await publishShiftById(arrPublish);
+      const {results} = await getShifts(newWeek, endWeek);
       setRows(results);
-
-      setPublishedDate(results[0].publishedDate);
       setpublish(format(new Date(results[0].publishedDate), 'dd MMM y, p'));
-      setDis(isSameWeek(new Date(), new Date(results[0].publishedDate)));
-
-      setNewWeek(startOfWeek(new Date(), {weekStartsOn: 1}));
-      setEndWeek(endOfWeek(new Date(), {weekStartsOn: 1}));
+      setDis(isSameWeek(new Date(), new Date(results[0]?.publishedDate)));
     } catch (error) {
       const message = getErrorMessage(error);
       setErrMsg(message);
@@ -209,25 +210,24 @@ const Shift = () => {
     }
   };
 
-  const changeWeek = (order: string) => {
-    if (order === 'prev') {
-      const newMonDate = sub(new Date(newWeek), {weeks: 1});
-      setNewWeek(newMonDate);
-      const newSunDate = sub(new Date(endWeek), {weeks: 1});
-      setEndWeek(newSunDate);
-      setDis(isSameWeek(new Date(newSunDate), new Date(publishedDate)));
-      console.log(publishedDate);
-    } else {
-      const newMonDate = add(new Date(newWeek), {weeks: 1});
-      setNewWeek(newMonDate);
-      const newSunDate = add(new Date(endWeek), {weeks: 1});
-      setEndWeek(newSunDate);
-      setDis(isSameWeek(new Date(newSunDate), new Date(publishedDate)));
-    }
-  };
-
   const changeDate = (datePublish: string) => {
     return datePublish.toString().substring(4, 10);
+  };
+
+  const prevWeek = async () => {
+    const newMonDate = sub(new Date(newWeek), {weeks: 1});
+    setNewWeek(newMonDate);
+    const newSunDate = sub(new Date(endWeek), {weeks: 1});
+    setEndWeek(newSunDate);
+    await getData(newMonDate, newSunDate);
+  };
+
+  const nextWeek = async () => {
+    const newMonDate = add(new Date(newWeek), {weeks: 1});
+    setNewWeek(newMonDate);
+    const newSunDate = add(new Date(endWeek), {weeks: 1});
+    setEndWeek(newSunDate);
+    await getData(newMonDate, newSunDate);
   };
 
   return (
@@ -237,7 +237,7 @@ const Shift = () => {
           <CardContent>
             <Grid container justifyContent='space-between' alignItems='center'>
               <Grid item container alignItems='center' xs={6}>
-                <IconButton color='primary' onClick={() => changeWeek('prev')}>
+                <IconButton color='primary' onClick={() => prevWeek()}>
                   <ArrowBackIosIcon />
                 </IconButton>
 
@@ -245,23 +245,18 @@ const Shift = () => {
                   {newWeek && endWeek && `${changeDate(newWeek)} - ${changeDate(endWeek)}`}
                 </Typography>
 
-                <IconButton color='primary' onClick={() => changeWeek('next')}>
+                <IconButton color='primary' onClick={() => nextWeek()}>
                   <ArrowForwardIosIcon />
                 </IconButton>
               </Grid>
-              <Grid
-                container={dis}
-                alignItems='center'
-                justifyContent='flex-end'
-                item
-                xs={dis && 6}
-              >
+              <Grid container={true} alignItems='center' justifyContent='flex-end' item xs={6}>
                 {dis && (
                   <>
                     <CheckCircleOutlineIcon className={classes.clr} />{' '}
                     <Typography className={classes.typo}>Week published on {publish}</Typography>
                   </>
                 )}
+
                 <Button
                   className={classes.addShiftBtn}
                   variant='outlined'
@@ -274,7 +269,7 @@ const Shift = () => {
                   className={classes.publishBtn}
                   variant='contained'
                   onClick={() => onPublish()}
-                  disabled={dis}
+                  disabled={dis || rows.length === 0}
                 >
                   PUBLISH
                 </Button>

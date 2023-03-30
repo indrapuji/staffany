@@ -3,6 +3,7 @@ import * as shiftUsecase from '../../../usecases/shiftUsecase';
 import {errorHandler} from '../../../shared/functions/error';
 import {
   ICreateShift,
+  IFindShift,
   IPublishShift,
   ISuccessResponse,
   IUpdateShift,
@@ -10,13 +11,16 @@ import {
 import moduleLogger from '../../../shared/functions/logger';
 import {HttpError} from '../../../shared/classes/HttpError';
 import {CONSTANT} from '../../../helpers/Constant';
+import {startOfWeek, endOfWeek, add} from 'date-fns';
+import {Between} from 'typeorm';
+import Shift from '../../../database/default/entity/shift';
 
 const logger = moduleLogger('shiftController');
 
 export const find = async (req: Request, h: ResponseToolkit) => {
   logger.info('Find shifts');
   try {
-    const filter = req.query;
+    const filter = req.query as IFindShift;
     const data = await shiftUsecase.find(filter);
     const res: ISuccessResponse = {
       statusCode: 200,
@@ -52,13 +56,78 @@ export const create = async (req: Request, h: ResponseToolkit) => {
   try {
     const body = req.payload as ICreateShift;
 
-    // FindById, and check if date already exist
+    // not complete
+    // const shiftData = await shiftUsecase.findAllByQuery({
+    //   date: body.date,
+    // });
+    // if (shiftData.length) {
+    //   let error = 0;
+
+    //   const bodySplittedStartTime = body.startTime.split(':');
+    //   const bodySplittedEndTime = body.endTime.split(':');
+    //   const bodyStartHour = Number(bodySplittedStartTime[0]);
+    //   const bodyStartMinute = Number(bodySplittedStartTime[1]);
+    //   const bodyEndHour = Number(bodySplittedEndTime[0]);
+    //   const bodyEndMinute = Number(bodySplittedEndTime[1]);
+
+    //   shiftData.map((data: Shift) => {
+    //     const splittedStartTime = data.startTime.split(':');
+    //     const splittedEndTime = data.endTime.split(':');
+    //     const startHour = Number(splittedStartTime[0]);
+    //     const startMinute = Number(splittedStartTime[1]);
+    //     const endHour = Number(splittedEndTime[0]);
+    //     const endMinute = Number(splittedEndTime[1]);
+
+    //     if (bodyStartHour >= startHour && bodyStartHour <= endHour) {
+    //       if (bodyStartHour === startHour && bodyStartMinute >= startMinute) {
+    //         error++;
+    //       }
+    //       // if (
+    //       //   bodyEndHour === startHour ||
+    //       //   bodyEndHour === endHour ||
+    //       //   bodyStartHour === endHour ||
+    //       //   bodyStartHour === startHour
+    //       // ) {
+    //       //   if (
+    //       //     (bodyStartMinute >= startMinute && bodyStartMinute <= endMinute) ||
+    //       //     (bodyEndMinute >= startMinute && bodyEndMinute <= endMinute)
+    //       //   ) {
+    //       //     console.log('masukkk =====\n');
+    //       //     error++;
+    //       //   }
+    //       // }
+    //     }
+    //     if (bodyEndHour >= startHour && bodyEndHour <= endHour) {
+    //       if (bodyEndHour === endHour && bodyEndMinute >= startMinute) {
+    //         error++;
+    //       }
+    //     }
+    //   });
+    //   if (error > 0) {
+    //     throw new HttpError(400, 'Shift already exist');
+    //   }
+    // }
+
+    // check if date already exist
     const shiftData = await shiftUsecase.findAllByQuery({
       date: body.date,
     });
     if (shiftData.length) {
       throw new HttpError(400, 'Shift already exist');
     }
+
+    // Check if date between already published
+    const startDate = add(startOfWeek(new Date(body.date), {weekStartsOn: 1}), {hours: 7});
+    const endDate = add(endOfWeek(new Date(body.date), {weekStartsOn: 1}), {hours: 7});
+    const shiftSameWeekData = await shiftUsecase.find({
+      startDate: startDate.toDateString(),
+      endDate: endDate.toDateString(),
+      status: 'published',
+    });
+    if (shiftSameWeekData.length) {
+      throw new HttpError(400, 'Shift already published');
+    }
+
     const data = await shiftUsecase.create(body);
     const res: ISuccessResponse = {
       statusCode: 200,
@@ -78,13 +147,24 @@ export const updateById = async (req: Request, h: ResponseToolkit) => {
     const id = req.params.id;
     const body = req.payload as IUpdateShift;
 
-    // findById check if status published
+    // check if status published
     const shiftData = await shiftUsecase.findById(id);
     if (!shiftData) {
       throw new HttpError(400, 'Shift not found');
     }
     if (shiftData.status === CONSTANT.PUBLISHED) {
       throw new HttpError(400, 'Shift cannot be changed');
+    }
+
+    const startDate = add(startOfWeek(new Date(body.date), {weekStartsOn: 1}), {hours: 7});
+    const endDate = add(endOfWeek(new Date(body.date), {weekStartsOn: 1}), {hours: 7});
+    const shiftSameWeekData = await shiftUsecase.find({
+      startDate: startDate.toDateString(),
+      endDate: endDate.toDateString(),
+      status: 'published',
+    });
+    if (shiftSameWeekData.length) {
+      throw new HttpError(400, 'Shift cannot be changed to that date');
     }
 
     const data = await shiftUsecase.updateById(id, body);
@@ -104,7 +184,8 @@ export const deleteById = async (req: Request, h: ResponseToolkit) => {
   logger.info('Delete shift by id');
   try {
     const id = req.params.id;
-    // findById check if status published
+
+    // check if status published
     const shiftData = await shiftUsecase.findById(id);
     if (!shiftData) {
       throw new HttpError(400, 'Shift not found');
@@ -131,7 +212,6 @@ export const publish = async (req: Request, h: ResponseToolkit) => {
 
   try {
     const body = req.payload as IPublishShift;
-
     const data = await shiftUsecase.publishShift(body);
     const res: ISuccessResponse = {
       statusCode: 200,

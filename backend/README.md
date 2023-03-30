@@ -40,7 +40,7 @@ DB_NAME="<your db name>"
 - [x] User should not be able to create or edit a shift such that is clashing with an existing shift
 - [x] User should be able to "publish" an entire week's worth of shifts at a time
 - [x] User should not be able to edit or delete a shift after it's been "published"
-- [ ] User should not be able to create shifts in a "week" that is "published"
+- [x] User should not be able to create shifts in a "week" that is "published"
 
 ## Project Structures
 

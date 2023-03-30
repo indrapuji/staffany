@@ -1,9 +1,10 @@
 import {getAxiosInstance} from '.';
 import axios from 'axios';
 
-export const getShifts = async () => {
+export const getShifts = async (mon: Date, sun: Date) => {
   const api = getAxiosInstance();
-  const {data} = await api.get('/shifts?order[date]=DESC&order[startTime]=ASC');
+  // const {data} = await api.get('/shifts?order[date]=DESC&order[startTime]=ASC');
+  const {data} = await api.get(`/shifts?startDate=${mon}&endDate=${sun}`);
   return data;
 };
 
