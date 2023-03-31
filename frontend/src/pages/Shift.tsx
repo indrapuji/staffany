@@ -194,7 +194,7 @@ const Shift = () => {
       if (rows.length === 0) {
         throw new Error('ID is null');
       }
-      const arrPublish = rows.map((item: any) => {
+      const arrPublish = rows.map((item: ShiftData) => {
         return item.id;
       });
       await publishShiftById(arrPublish);

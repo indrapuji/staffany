@@ -14,6 +14,7 @@ import {CONSTANT} from '../../../helpers/Constant';
 import {startOfWeek, endOfWeek, add} from 'date-fns';
 import {Between} from 'typeorm';
 import Shift from '../../../database/default/entity/shift';
+import {timeChecker} from '../../../helpers/TimeChecker';
 
 const logger = moduleLogger('shiftController');
 
@@ -56,69 +57,25 @@ export const create = async (req: Request, h: ResponseToolkit) => {
   try {
     const body = req.payload as ICreateShift;
 
-    // not complete
-    // const shiftData = await shiftUsecase.findAllByQuery({
-    //   date: body.date,
-    // });
-    // if (shiftData.length) {
-    //   let error = 0;
-
-    //   const bodySplittedStartTime = body.startTime.split(':');
-    //   const bodySplittedEndTime = body.endTime.split(':');
-    //   const bodyStartHour = Number(bodySplittedStartTime[0]);
-    //   const bodyStartMinute = Number(bodySplittedStartTime[1]);
-    //   const bodyEndHour = Number(bodySplittedEndTime[0]);
-    //   const bodyEndMinute = Number(bodySplittedEndTime[1]);
-
-    //   shiftData.map((data: Shift) => {
-    //     const splittedStartTime = data.startTime.split(':');
-    //     const splittedEndTime = data.endTime.split(':');
-    //     const startHour = Number(splittedStartTime[0]);
-    //     const startMinute = Number(splittedStartTime[1]);
-    //     const endHour = Number(splittedEndTime[0]);
-    //     const endMinute = Number(splittedEndTime[1]);
-
-    //     if (bodyStartHour >= startHour && bodyStartHour <= endHour) {
-    //       if (bodyStartHour === startHour && bodyStartMinute >= startMinute) {
-    //         error++;
-    //       }
-    //       // if (
-    //       //   bodyEndHour === startHour ||
-    //       //   bodyEndHour === endHour ||
-    //       //   bodyStartHour === endHour ||
-    //       //   bodyStartHour === startHour
-    //       // ) {
-    //       //   if (
-    //       //     (bodyStartMinute >= startMinute && bodyStartMinute <= endMinute) ||
-    //       //     (bodyEndMinute >= startMinute && bodyEndMinute <= endMinute)
-    //       //   ) {
-    //       //     console.log('masukkk =====\n');
-    //       //     error++;
-    //       //   }
-    //       // }
-    //     }
-    //     if (bodyEndHour >= startHour && bodyEndHour <= endHour) {
-    //       if (bodyEndHour === endHour && bodyEndMinute >= startMinute) {
-    //         error++;
-    //       }
-    //     }
-    //   });
-    //   if (error > 0) {
-    //     throw new HttpError(400, 'Shift already exist');
-    //   }
-    // }
-
     // check if date already exist
     const shiftData = await shiftUsecase.findAllByQuery({
       date: body.date,
     });
     if (shiftData.length) {
-      throw new HttpError(400, 'Shift already exist');
+      const isError = timeChecker(shiftData, body);
+      if (isError === true) {
+        throw new HttpError(400, 'Shift already exist');
+      }
     }
 
     // Check if date between already published
-    const startDate = add(startOfWeek(new Date(body.date), {weekStartsOn: 1}), {hours: 7});
-    const endDate = add(endOfWeek(new Date(body.date), {weekStartsOn: 1}), {hours: 7});
+
+    // const startDate = add(startOfWeek(new Date(body.date), {weekStartsOn: 1}), {hours: 7});
+    // const endDate = add(endOfWeek(new Date(body.date), {weekStartsOn: 1}), {hours: 7});
+
+    const startDate = startOfWeek(new Date(body.date), {weekStartsOn: 1});
+    const endDate = endOfWeek(new Date(body.date), {weekStartsOn: 1});
+
     const shiftSameWeekData = await shiftUsecase.find({
       startDate: startDate.toDateString(),
       endDate: endDate.toDateString(),
@@ -156,8 +113,11 @@ export const updateById = async (req: Request, h: ResponseToolkit) => {
       throw new HttpError(400, 'Shift cannot be changed');
     }
 
-    const startDate = add(startOfWeek(new Date(body.date), {weekStartsOn: 1}), {hours: 7});
-    const endDate = add(endOfWeek(new Date(body.date), {weekStartsOn: 1}), {hours: 7});
+    // const startDate = add(startOfWeek(new Date(body.date), {weekStartsOn: 1}), {hours: 7});
+    // const endDate = add(endOfWeek(new Date(body.date), {weekStartsOn: 1}), {hours: 7});
+
+    const startDate = startOfWeek(new Date(body.date), {weekStartsOn: 1});
+    const endDate = endOfWeek(new Date(body.date), {weekStartsOn: 1});
     const shiftSameWeekData = await shiftUsecase.find({
       startDate: startDate.toDateString(),
       endDate: endDate.toDateString(),
@@ -165,6 +125,16 @@ export const updateById = async (req: Request, h: ResponseToolkit) => {
     });
     if (shiftSameWeekData.length) {
       throw new HttpError(400, 'Shift cannot be changed to that date');
+    }
+
+    const shiftDataTemp = await shiftUsecase.findAllByQuery({
+      date: body.date,
+    });
+    if (shiftDataTemp.length) {
+      const isError = timeChecker(shiftDataTemp, body);
+      if (isError === true) {
+        throw new HttpError(400, 'Shift already exist');
+      }
     }
 
     const data = await shiftUsecase.updateById(id, body);
@@ -212,6 +182,7 @@ export const publish = async (req: Request, h: ResponseToolkit) => {
 
   try {
     const body = req.payload as IPublishShift;
+
     const data = await shiftUsecase.publishShift(body);
     const res: ISuccessResponse = {
       statusCode: 200,
