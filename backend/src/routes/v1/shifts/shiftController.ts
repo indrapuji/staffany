@@ -11,7 +11,7 @@ import {
 import moduleLogger from '../../../shared/functions/logger';
 import {HttpError} from '../../../shared/classes/HttpError';
 import {CONSTANT} from '../../../helpers/Constant';
-import {startOfWeek, endOfWeek, add} from 'date-fns';
+import {startOfWeek, endOfWeek, add, isSameWeek} from 'date-fns';
 import {Between} from 'typeorm';
 import Shift from '../../../database/default/entity/shift';
 import {timeChecker} from '../../../helpers/TimeChecker';
@@ -182,6 +182,12 @@ export const publish = async (req: Request, h: ResponseToolkit) => {
 
   try {
     const body = req.payload as IPublishShift;
+
+    // check if published not in same week
+    const shiftData = await shiftUsecase.findById(body.shiftArrId[0]);
+    if (!isSameWeek(new Date(shiftData.date), new Date(), {weekStartsOn: 1})) {
+      throw new HttpError(400, 'Publish failed, different Week');
+    }
 
     const data = await shiftUsecase.publishShift(body);
     const res: ISuccessResponse = {
